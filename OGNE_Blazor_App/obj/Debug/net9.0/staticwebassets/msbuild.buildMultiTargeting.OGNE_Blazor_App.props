@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\OGNE_Blazor_App.props" />
+</Project>

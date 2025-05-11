@@ -1,0 +1,260 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@attribute [StreamRendering]
+
+
+
+<h1>Upload OG&E Reader Data</h1>
+
+<div style="margin-bottom: auto; display: flex;">
+    <InputFile OnChange="FileUploaded" />
+</div>
+
+
+<h2>File Info</h2>
+<div>
+    <div>File name: @FileName</div>
+    <div>File size: @FileSize.ToString("n0") bytes</div>
+    <div>File type: @FileType</div>
+    <div>Last modified: @LastModified</div>
+</div>
+
+    <button class="btn btn-primary" @onclick="()=> showMostActiveReader = !showMostActiveReader">Most Active</button>
+    <button class="btn btn-primary" @onclick="()=> showLeastActiveReader = !showLeastActiveReader">Least Active</button>
+    
+       
+<table class="table">
+    <thead>
+            <tr>
+                <th>Key</th>
+                <th>calls</th>
+                <th>reader name</th>
+            </tr>
+    </thead>
+    <tbody>
+        @foreach(KeyValuePair<string ,  List<ReaderEvent>> kvp in readerDictionary)
+        {
+            <tr>
+                <td>@kvp.Key</td>
+                <td>@kvp.Value.Count</td>
+                <td>@kvp.Value.First().GetName()</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div>Error: @ErrorMessage</div>
+}
+
+
+<div>
+    @foreach(KeyValuePair<string, List<ReaderEvent>> kvp in readerDictionary)
+    {
+        
+            if(kvp.Value.Count > currentMostActive.Count)
+            {
+                currentMostActive = kvp.Value;
+                mostActiveReader = currentMostActive.First().GetName();
+            }
+    }
+    @if(showMostActiveReader)
+    {
+        <p>most active reader: @mostActiveReader</p>
+    }
+</div>
+
+<div>
+    @foreach(KeyValuePair<string, List<ReaderEvent>> kvp in readerDictionary)
+    {
+        
+            if(kvp.Value.Count < currentLeastActive.Count || kvp.Value[0] == masterList[0])
+            {
+                currentLeastActive = kvp.Value;
+                leastActiveReader = currentLeastActive.First().GetName();
+            }
+    }
+    @if(showLeastActiveReader)
+    {
+        <p>least active reader: @leastActiveReader</p>
+    }
+</div>
+
+
+
+<div>
+    @foreach(KeyValuePair<string,int> kvp in uniqueUsers)
+    {
+        if(kvp.Value <= leastActiveUserCalls || leastActiveUserCalls == 0)
+        {
+            leastActiveUser.Add(kvp.Key);
+            leastActiveUserCalls = kvp.Value;
+        }
+    }
+    @if(showLeastActiveUsers)
+    {
+        <ul>
+            @foreach(string user in leastActiveUser)
+            {
+                <li>@user</li>
+            }
+        </ul>
+    }
+</div>
+ 
+
+
+
+
+@code {
+    public string FileName { get; set; } = "";
+    public long FileSize { get; set; }
+    public string FileType { get; set; } = "";
+    public DateTimeOffset LastModified { get; set; }
+    public string ErrorMessage { get; set; } = "";
+
+    const int MAX_FILESIZE = 10000 * 1024; // 2 MB
+    private List<ReaderEvent> masterList = new List<ReaderEvent>();
+
+    private List<ReaderEvent> currentMostActive = new List<ReaderEvent>();
+
+    private List<ReaderEvent> currentLeastActive = new List<ReaderEvent>();
+    
+
+    public string mostActiveReader = "";
+    public string leastActiveReader = "";
+
+    private List<string> ids = new List<string>();
+
+    public int readersThatExist = 0;
+
+    private bool showMostActiveReader;
+
+    private bool showLeastActiveReader;
+
+    
+    private List<string> leastActiveUser = new List<string>();
+    private int leastActiveUserCalls;
+
+    private bool showLeastActiveUsers;
+
+    private Dictionary<string,  int> uniqueUsers = new Dictionary<string, int>();
+
+    public async Task FileUploaded(InputFileChangeEventArgs e)
+    {
+        var browserFile = e.File;
+        
+
+        if (browserFile != null)
+        {
+            
+            FileSize = browserFile.Size;
+            FileType = browserFile.ContentType;
+            FileName = browserFile.Name;
+            LastModified = browserFile.LastModified;
+
+            try
+            {
+                var fileStream = browserFile.OpenReadStream(MAX_FILESIZE);
+
+
+                var destinationStream = new FileStream(FileName, FileMode.Create);
+                await fileStream.CopyToAsync(destinationStream);
+                destinationStream.Close();
+                StreamReader streamReader = new StreamReader(FileName);
+                List<string[]> lineList = new List<string[]>();
+                string line = streamReader.ReadLine();
+                line = streamReader.ReadLine(); //skips first line
+                while(line != null)
+                {
+                    lineList.Add(line.Split(","));
+                    line = streamReader.ReadLine();
+                }
+                foreach(string[] r in lineList)
+                    {
+                        if(r.Length >= 6)
+                        {
+                            readersThatExist++;    
+                            ReaderEvent a = new ReaderEvent(r[0],r[1],r[2],r[3],r[4],r[5]);
+                            masterList.Add(a);
+                        }
+                    }
+                foreach(ReaderEvent _reader in masterList)
+                {
+                    CreateDictionary(_reader);
+                }
+            }
+            catch (Exception exception)
+            {
+                ErrorMessage = exception.Message;
+            }
+        }
+    }
+
+    private Dictionary<string,  List<ReaderEvent>> readerDictionary = new Dictionary<string, List<ReaderEvent> >();
+
+    private void CreateDictionary(ReaderEvent r)
+    {
+        List<ReaderEvent> runs = new List<ReaderEvent>();
+        try
+        {
+            readerDictionary.Add(r.DEVID + r.MACHINE, runs);
+            readerDictionary[r.DEVID+r.MACHINE].Add(r);
+        }
+        catch
+        {
+            Console.WriteLine("already exits");
+            readerDictionary[r.DEVID+r.MACHINE].Add(r);
+        }
+    }
+
+    
+
+    class ReaderEvent
+    {
+        private string EVENT_TIME_UTC;
+        private string LOCATION;
+        private string READERDESC;
+        public string IDHASH;
+        public string DEVID;
+        public string MACHINE;
+
+        public ReaderEvent()
+        {
+            EVENT_TIME_UTC = "";
+
+            LOCATION = "";
+
+            READERDESC = "";
+
+            IDHASH = "";
+
+            DEVID = "";
+
+            MACHINE = "";
+        }
+
+        public ReaderEvent(string time, string loc, string desc, string id, string devid, string machine)
+        {
+            EVENT_TIME_UTC = time;
+            LOCATION = loc;
+            READERDESC = desc;
+            IDHASH = id;
+            DEVID = devid;
+            MACHINE = machine;
+
+        }
+
+        public override string ToString()
+        {
+            return $"{EVENT_TIME_UTC} , {LOCATION} , {READERDESC}, {IDHASH}, {DEVID}, {MACHINE}";
+        }
+
+        public string GetName()
+        {
+            return $"{LOCATION} , {READERDESC}";
+        }
+    }
+}
