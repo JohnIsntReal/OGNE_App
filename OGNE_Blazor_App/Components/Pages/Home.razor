@@ -4,7 +4,7 @@
 
 
 
-<h1>Upload OG&E Reader Data</h1>
+<h1>OG&E CSV file upload</h1>
 
 <div style="margin-bottom: auto; display: flex;">
     <InputFile OnChange="FileUploaded" />
@@ -18,9 +18,13 @@
     <div>File type: @FileType</div>
     <div>Last modified: @LastModified</div>
 </div>
-
+<div>
     <button class="btn btn-primary" @onclick="()=> showMostActiveReader = !showMostActiveReader">Most Active</button>
     <button class="btn btn-primary" @onclick="()=> showLeastActiveReader = !showLeastActiveReader">Least Active</button>
+    <button class="btn btn-primary" @onclick="()=> showUniqueUsers = !showUniqueUsers">Unique Users</button>
+    <button class="btn btn-primary" @onclick="()=> showLeastActiveUsers = !showLeastActiveUsers">Least Active Users</button>
+</div>
+    
     
        
 <table class="table">
@@ -104,6 +108,55 @@
     }
 </div>
  
+ <div>
+    @foreach(KeyValuePair<string, List<ReaderEvent>> kvp in readerDictionary)
+    {
+        foreach(ReaderEvent i in kvp.Value)
+        {
+            if(!ids.Contains(i.IDHASH))
+            {
+                ids.Add(i.IDHASH);
+                uniqueUsers.Add(i.IDHASH, 1);
+            }
+            if(ids.Contains(i.IDHASH))
+            {
+                uniqueUsers[i.IDHASH]++;
+            }
+        }
+    }
+    
+    @if(showUniqueUsers)
+    {
+        <p>Unique Users: @ids.Count</p>
+        <ul>
+            @foreach(string i in ids)
+            {
+                <li>@i</li>
+            }    
+        </ul>
+    }
+</div> 
+
+<div>
+    @foreach(KeyValuePair<string,int> kvp in uniqueUsers)
+    {
+        if(kvp.Value <= leastActiveUserCalls || leastActiveUserCalls == 0)
+        {
+            leastActiveUser.Add(kvp.Key);
+            leastActiveUserCalls = kvp.Value;
+        }
+    }
+    @if(showLeastActiveUsers)
+    {
+        <ul>
+            @foreach(string user in leastActiveUser)
+            {
+                <li>@user</li>
+            }
+        </ul>
+    }
+</div>
+
 
 
 
@@ -134,7 +187,7 @@
 
     private bool showLeastActiveReader;
 
-    
+    private bool showUniqueUsers;
     private List<string> leastActiveUser = new List<string>();
     private int leastActiveUserCalls;
 
@@ -205,7 +258,7 @@
         }
         catch
         {
-            Console.WriteLine("already exits");
+            Console.WriteLine("already exists");
             readerDictionary[r.DEVID+r.MACHINE].Add(r);
         }
     }

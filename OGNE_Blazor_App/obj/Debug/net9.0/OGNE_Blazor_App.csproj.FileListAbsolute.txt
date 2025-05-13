@@ -77,3 +77,4 @@ C:\Users\death\Desktop\OGNE_App\OGNE_Blazor_App\obj\Debug\net9.0\refint\OGNE_Bla
 C:\Users\death\Desktop\OGNE_App\OGNE_Blazor_App\obj\Debug\net9.0\OGNE_Blazor_App.pdb
 C:\Users\death\Desktop\OGNE_App\OGNE_Blazor_App\obj\Debug\net9.0\OGNE_Blazor_App.genruntimeconfig.cache
 C:\Users\death\Desktop\OGNE_App\OGNE_Blazor_App\obj\Debug\net9.0\ref\OGNE_Blazor_App.dll
+C:\Users\death\Desktop\OGNE_App\OGNE_Blazor_App\obj\Debug\net9.0\OGNE_Blazor_App.sourcelink.json
